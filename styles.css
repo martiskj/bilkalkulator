@@ -38,32 +38,20 @@ header p {
   color: var(--text-dim);
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: 0.85fr 1.1fr 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
-@media (max-width: 1024px) {
-  .layout { grid-template-columns: 1fr 1fr; }
-}
-
-@media (max-width: 720px) {
-  .layout { grid-template-columns: 1fr; }
-}
-
-/* ---- Charts area (full width, below inputs/result) ---- */
+/* Inputs/result and charts share one column template → aligned 2×2 matrix.
+   No align-items override → default `stretch` gives both cells in a row equal
+   height. */
+.layout,
 .charts {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr);
   gap: 24px;
-  margin-top: 24px;
-  align-items: start;
 }
-.charts .full { grid-column: 1 / -1; }
 
-@media (max-width: 720px) {
+.charts { margin-top: 24px; }
+
+@media (max-width: 860px) {
+  .layout,
   .charts { grid-template-columns: 1fr; }
 }
 
@@ -192,12 +180,14 @@ input[type="range"] {
 .figure .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* ---- Chart ---- */
+/* Panel is a flex column so the chart box can grow to fill the stretched row
+   height, keeping both chart panels the same height. */
+.chart-panel { display: flex; flex-direction: column; }
 .chart-box {
   position: relative;
-  margin: 0 auto;
+  flex: 1;
+  min-height: 320px;
 }
-.chart-box.wide { height: 300px; }
-.chart-box.tall { height: 360px; }
 .chart-savings {
   display: flex;
   justify-content: space-between;

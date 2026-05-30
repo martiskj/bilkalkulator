@@ -53,8 +53,7 @@ const COLOR = {
   cost: '#f87171',     // red — drives the price up
   saving: '#34d399',   // teal-green — pulls the price down
   total: '#4ade80',    // accent green — the headline total
-  alt: '#64748b',      // grey — the alternative strategy
-  bank: '#fbbf24',     // amber — bank balance
+  bank: '#fbbf24',     // amber — accrued interest on the equity
   loan: '#f87171',     // red — loan balance
   grid: '#2d3a4d',
   tick: '#8b98a9',
@@ -101,35 +100,10 @@ const waterfallChart = new Chart(document.getElementById('waterfallChart'), {
 });
 
 // ===========================================================================
-//  2. COMPARISON — modelled strategy vs. paying equity straight down.
-// ===========================================================================
-const compareChart = new Chart(document.getElementById('compareChart'), {
-  type: 'bar',
-  data: {
-    labels: ['Med strategi', 'Betal med en gang'],
-    datasets: [{
-      data: [0, 0],
-      backgroundColor: [COLOR.total, COLOR.alt],
-      borderRadius: 6,
-    }],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: (c) => kr(c.parsed.y) } },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: TICKS },
-      y: { grid: GRID, ticks: { ...TICKS, callback: moneyTick }, beginAtZero: false },
-    },
-  },
-});
-
-// ===========================================================================
-//  3. BALANCE OVER TIME — bank balance and loan balance, month by month.
-//  A dashed vertical line marks the end of the interest-free period.
+//  2. BALANCE OVER TIME — equity build-up (stacked bars) and loan (line).
+//  Stacked bars split the bank balance into the original deposit and the
+//  interest accrued on top; the loan balance is drawn as a line. A dashed
+//  vertical line marks the lump-sum injection at the interest-free period end.
 // ===========================================================================
 const transitionLinePlugin = {
   id: 'transitionLine',
@@ -156,12 +130,13 @@ const transitionLinePlugin = {
 };
 
 const balanceChart = new Chart(document.getElementById('balanceChart'), {
-  type: 'line',
+  type: 'bar',
   data: {
     labels: [],
     datasets: [
-      { label: 'Banksaldo', data: [], borderColor: COLOR.bank, backgroundColor: 'transparent', tension: 0.15, pointRadius: 0, borderWidth: 2 },
-      { label: 'Lånesaldo', data: [], borderColor: COLOR.loan, backgroundColor: 'transparent', tension: 0.15, pointRadius: 0, borderWidth: 2 },
+      { type: 'bar', label: 'Egenkapital (innskudd)', data: [], backgroundColor: COLOR.car, stack: 'eq', categoryPercentage: 1.0, barPercentage: 1.0 },
+      { type: 'bar', label: 'Opptjente renter', data: [], backgroundColor: COLOR.bank, stack: 'eq', categoryPercentage: 1.0, barPercentage: 1.0 },
+      { type: 'line', label: 'Lånesaldo', data: [], borderColor: COLOR.loan, backgroundColor: 'transparent', tension: 0.15, pointRadius: 0, borderWidth: 2 },
     ],
   },
   options: {
@@ -172,6 +147,7 @@ const balanceChart = new Chart(document.getElementById('balanceChart'), {
       legend: { position: 'bottom', labels: { color: '#e6edf3', padding: 16 } },
       transitionLine: { month: 0 },
       tooltip: {
+        filter: (c) => c.parsed.y > 0.5 || c.dataset.type === 'line',
         callbacks: {
           title: (items) => `Måned ${items[0].label}`,
           label: (c) => `${c.dataset.label}: ${kr(c.parsed.y)}`,
@@ -180,10 +156,11 @@ const balanceChart = new Chart(document.getElementById('balanceChart'), {
     },
     scales: {
       x: {
+        stacked: true,
         grid: { display: false },
         ticks: { ...TICKS, callback: (v, i, ticks) => (ticks[i].value % 12 === 0 ? ticks[i].value / 12 + ' år' : '') },
       },
-      y: { grid: GRID, ticks: { ...TICKS, callback: moneyTick }, beginAtZero: true },
+      y: { stacked: true, grid: GRID, ticks: { ...TICKS, callback: moneyTick }, beginAtZero: true },
     },
   },
   plugins: [transitionLinePlugin],
@@ -216,7 +193,6 @@ function render() {
   document.getElementById('f-totalPaid').textContent = kr(r.totalPaidDuringAmortisation);
 
   updateWaterfall(r);
-  updateComparison(r);
   updateBalance();
 }
 
@@ -270,23 +246,13 @@ function updateWaterfall(r) {
   waterfallChart.update();
 }
 
-// --- 2. Comparison: modelled strategy vs. pay-down-immediately --------------
-function updateComparison(r) {
-  const alt = beregnAlternativ(state);
-  compareChart.data.datasets[0].data = [r.totalPrice, alt.totalPrice];
-  compareChart.update();
-
-  const gain = alt.totalPrice - r.totalPrice;
-  document.getElementById('c-strategyGain').textContent =
-    (gain >= 0 ? '' : '− ') + kr(Math.abs(gain));
-}
-
-// --- 3. Balance over time ---------------------------------------------------
+// --- 2. Balance over time: equity build-up (bars) + loan (line) -------------
 function updateBalance() {
   const ts = beregnTidsserie(state);
   balanceChart.data.labels = ts.months;
-  balanceChart.data.datasets[0].data = ts.bankBalance;
-  balanceChart.data.datasets[1].data = ts.loanBalance;
+  balanceChart.data.datasets[0].data = ts.equityPrincipal;
+  balanceChart.data.datasets[1].data = ts.equityInterest;
+  balanceChart.data.datasets[2].data = ts.loanBalance;
   balanceChart.options.plugins.transitionLine.month = ts.interestFreeMonths;
   balanceChart.update();
 }
