@@ -16,62 +16,39 @@
     <div class="layout">
       <!-- ================= INPUT ================= -->
       <section class="panel" id="inputs">
-        <h2>Parametre</h2>
 
-        <div class="control" data-key="carPrice" data-min="100000" data-max="1500000" data-step="10000" data-unit="kr">
-          <div class="control-head">
-            <label>Pris på bil</label>
-            <div class="value-box"><input type="number"><span class="unit">kr</span></div>
-          </div>
-          <input type="range">
-        </div>
-
-        <div class="control" data-key="equity" data-min="0" data-max="1000000" data-step="10000" data-unit="kr">
-          <div class="control-head">
-            <label>Egenkapital</label>
-            <div class="value-box"><input type="number"><span class="unit">kr</span></div>
-          </div>
-          <input type="range">
-        </div>
-
-        <div class="control" data-key="repaymentYears" data-min="1" data-max="15" data-step="1" data-unit="år">
-          <div class="control-head">
-            <label>Nedbetalingstid</label>
-            <div class="value-box"><input type="number"><span class="unit">år</span></div>
-          </div>
-          <input type="range">
-        </div>
-
-        <div class="control" data-key="interestFreeYears" data-min="0" data-max="15" data-step="1" data-unit="år">
-          <div class="control-head">
-            <label>Rentefrie år</label>
-            <div class="value-box"><input type="number"><span class="unit">år</span></div>
-          </div>
-          <input type="range">
-        </div>
-
-        <div class="control" data-key="loanRate" data-min="0" data-max="15" data-step="0.1" data-unit="%" data-pct>
-          <div class="control-head">
-            <label>Rente på billån</label>
-            <div class="value-box"><input type="number"><span class="unit">%</span></div>
-          </div>
-          <input type="range">
-        </div>
-
-        <details class="advanced">
-          <summary>Avansert</summary>
-
-          <div class="control" data-key="bankRate" data-min="0" data-max="10" data-step="0.1" data-unit="%" data-pct>
+        <h3 class="group-title">Bil</h3>
+        <div class="control-group">
+          <div class="control" data-key="carPrice" data-min="100000" data-max="1500000" data-step="10000" data-unit="kr">
             <div class="control-head">
-              <label>Bankrente (risikofri)</label>
-              <div class="value-box"><input type="number"><span class="unit">%</span></div>
+              <label>Pris på bil</label>
+              <div class="value-box"><input type="number"><span class="unit">kr</span></div>
+            </div>
+            <input type="range">
+          </div>
+        </div>
+
+        <h3 class="group-title">Lån</h3>
+        <div class="control-group">
+          <div class="control" data-key="repaymentYears" data-min="1" data-max="15" data-step="1" data-unit="år">
+            <div class="control-head">
+              <label>Nedbetalingstid</label>
+              <div class="value-box"><input type="number"><span class="unit">år</span></div>
             </div>
             <input type="range">
           </div>
 
-          <div class="control" data-key="taxRate" data-min="0" data-max="50" data-step="1" data-unit="%" data-pct>
+          <div class="control" data-key="interestFreeYears" data-min="0" data-max="15" data-step="1" data-unit="år">
             <div class="control-head">
-              <label>Skattesats (renter)</label>
+              <label>Rentefrie år</label>
+              <div class="value-box"><input type="number"><span class="unit">år</span></div>
+            </div>
+            <input type="range">
+          </div>
+
+          <div class="control" data-key="loanRate" data-min="0" data-max="15" data-step="0.1" data-unit="%" data-pct>
+            <div class="control-head">
+              <label>Rente på billån</label>
               <div class="value-box"><input type="number"><span class="unit">%</span></div>
             </div>
             <input type="range">
@@ -92,18 +69,39 @@
             </div>
             <input type="range">
           </div>
+        </div>
+
+        <h3 class="group-title">Egenkapital &amp; bank</h3>
+        <div class="control-group">
+          <div class="control" data-key="equity" data-min="0" data-max="1000000" data-step="10000" data-unit="kr">
+            <div class="control-head">
+              <label>Egenkapital</label>
+              <div class="value-box"><input type="number"><span class="unit">kr</span></div>
+            </div>
+            <input type="range">
+          </div>
+
+          <div class="control" data-key="bankRate" data-min="0" data-max="10" data-step="0.1" data-unit="%" data-pct>
+            <div class="control-head">
+              <label>Bankrente (risikofri)</label>
+              <div class="value-box"><input type="number"><span class="unit">%</span></div>
+            </div>
+            <input type="range">
+          </div>
+
+          <div class="control" data-key="taxRate" data-min="0" data-max="50" data-step="1" data-unit="%" data-pct>
+            <div class="control-head">
+              <label>Skattesats (renter)</label>
+              <div class="value-box"><input type="number"><span class="unit">%</span></div>
+            </div>
+            <input type="range">
+          </div>
+        </div>
         </details>
       </section>
 
       <!-- ================= RESULT ================= -->
       <section class="panel" id="result">
-        <h2>Resultat</h2>
-
-        <div class="headline">
-          <div class="label">Totalpris for bilen</div>
-          <div class="total" id="total">–</div>
-        </div>
-
         <table class="breakdown">
           <tbody>
             <tr><td>Bilpris</td><td id="r-carPrice">–</td></tr>
@@ -111,20 +109,21 @@
             <tr class="op"><td>+ Gebyrer</td><td id="r-fees" class="neg">–</td></tr>
             <tr class="op"><td>− Skattefradrag (renter)</td><td id="r-taxDeduction" class="pos">–</td></tr>
             <tr class="op"><td>− Nettogevinst i bank</td><td id="r-bankGain" class="pos">–</td></tr>
-            <tr class="sum"><td>= Totalpris</td><td id="r-total">–</td></tr>
           </tbody>
         </table>
 
-        <div class="subfigures">
-          <div class="figure"><div class="k">Terminbeløp (rentefri periode)</div><div class="v" id="f-monthly">–</div></div>
-          <div class="figure"><div class="k">Egenkapital ved periodeslutt</div><div class="v" id="f-equityEnd">–</div></div>
-          <div class="figure"><div class="k">Restlån etter innskudd</div><div class="v" id="f-remaining">–</div></div>
-          <div class="figure"><div class="k">Totalt betalt på lånet</div><div class="v" id="f-totalPaid">–</div></div>
-          <div class="figure" id="fig-excess" hidden><div class="k">Tilbakebetalt egenkapital</div><div class="v pos" id="f-excess">–</div></div>
+        <div class="headline">
+          <div class="label">Totalpris for bilen</div>
+          <div class="total" id="total">–</div>
+          <div class="insight" id="insight"></div>
         </div>
 
-        <div class="assumptions">
-          <p style="font-weight:600;color:var(--text);margin-bottom:6px;">Formel</p>
+        <div class="chart-box-inline">
+          <canvas id="waterfallChart"></canvas>
+        </div>
+
+        <details class="assumptions">
+          <summary>Formel og forutsetninger</summary>
           <span class="formula">Totalpris = Bilpris + Lånerenter + Gebyrer − Skattefradrag − Nettogevinst_bank</span>
           <p>Forutsetninger: lånet er rentefritt i den rentefrie perioden, men <strong>ikke avdragsfritt</strong>
           – terminbeløpet er da lånet fordelt lineært over hele løpetiden (bilpris ÷ antall måneder), og siden
@@ -137,7 +136,7 @@
           med å bruke det til ekstra nedbetaling. Gebyrene består av et etableringsgebyr (finansiert inn i lånet,
           så det forrentes) og et termingebyr som betales på hver termin så lenge lånet løper. Gebyrer er
           <strong>ikke</strong> fradragsberettiget – kun renter får <code>22 %</code>-fradraget.</p>
-        </div>
+        </details>
       </section>
 
     </div>
@@ -145,14 +144,18 @@
     <!-- ================= CHARTS ================= -->
     <div class="charts">
       <section class="panel chart-panel">
-        <h2>Hva bygger opp totalprisen?</h2>
-        <p class="chart-sub">Hver søyle bygger på forrige – rødt drar prisen opp, grønt trekker den ned.</p>
-        <div class="chart-box"><canvas id="waterfallChart"></canvas></div>
-      </section>
-
-      <section class="panel chart-panel">
         <h2>Saldo over tid</h2>
         <p class="chart-sub">Egenkapitalen vokser i banken, settes inn som engangsbeløp, og lånet nedbetales.</p>
+        <div class="subfigures" style="margin-bottom: 16px;">
+          <div class="figure" id="fig-monthly1">
+            <div class="k" id="k-monthly1">Terminbeløp</div>
+            <div class="v" id="f-monthly1">–</div>
+          </div>
+          <div class="figure" id="fig-monthly2" hidden>
+            <div class="k" id="k-monthly2">Terminbeløp</div>
+            <div class="v" id="f-monthly2">–</div>
+          </div>
+        </div>
         <div class="chart-box"><canvas id="balanceChart"></canvas></div>
       </section>
     </div>

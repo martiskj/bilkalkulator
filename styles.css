@@ -38,21 +38,18 @@ header p {
   color: var(--text-dim);
 }
 
-/* Inputs/result and charts share one column template → aligned 2×2 matrix.
-   No align-items override → default `stretch` gives both cells in a row equal
-   height. */
-.layout,
-.charts {
+.layout {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr);
   gap: 24px;
 }
 
-.charts { margin-top: 24px; }
+.charts {
+  margin-top: 24px;
+}
 
 @media (max-width: 860px) {
-  .layout,
-  .charts { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: 1fr; }
 }
 
 .chart-sub {
@@ -68,10 +65,6 @@ header p {
   padding: 22px 24px;
 }
 
-.panel h2 {
-  margin: 0 0 18px;
-  font-size: 18px;
-}
 
 /* ---- Input controls ---- */
 .control { margin-bottom: 20px; }
@@ -122,22 +115,45 @@ input[type="range"] {
   cursor: pointer;
 }
 
-.advanced summary {
-  cursor: pointer;
+.control-group {
+  background: var(--panel-2);
+  border-radius: 10px;
+  padding: 16px 18px 4px;
+  margin-bottom: 10px;
+}
+.control-group:last-child { margin-bottom: 0; }
+
+.group-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
   color: var(--text-dim);
-  font-weight: 600;
-  margin-bottom: 14px;
+}
+
+.control-group + .group-title { margin-top: 14px; }
+
+.control-group .control-head input[type="number"] {
+  background: var(--panel);
 }
 
 /* ---- Result ---- */
 .headline {
   text-align: center;
-  padding: 8px 0 18px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 18px;
+  padding: 18px 0 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
 }
 
 .headline .label { color: var(--text-dim); font-size: 14px; }
+
+.insight {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+  min-height: 1.4em;
+}
 
 .headline .total {
   font-size: 44px;
@@ -152,7 +168,7 @@ input[type="range"] {
   font-variant-numeric: tabular-nums;
 }
 
-.breakdown td { padding: 9px 4px; }
+.breakdown td { padding: 5px 4px; }
 .breakdown td:last-child { text-align: right; font-weight: 600; }
 .breakdown tr.op td:first-child { color: var(--text-dim); }
 .breakdown tr.sum {
@@ -180,13 +196,18 @@ input[type="range"] {
 .figure .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* ---- Chart ---- */
-/* Panel is a flex column so the chart box can grow to fill the stretched row
-   height, keeping both chart panels the same height. */
 .chart-panel { display: flex; flex-direction: column; }
 .chart-box {
   position: relative;
   flex: 1;
   min-height: 320px;
+}
+
+/* Waterfall embedded inside the result panel — compact fixed height */
+.chart-box-inline {
+  position: relative;
+  height: 220px;
+  margin: 20px 0 4px;
 }
 .chart-savings {
   display: flex;
@@ -206,6 +227,30 @@ input[type="range"] {
   font-size: 13px;
   color: var(--text-dim);
 }
+
+.assumptions summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.assumptions summary::before {
+  content: '▸';
+  font-size: 11px;
+  transition: transform .2s;
+}
+
+.assumptions[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.assumptions summary ~ * { margin-top: 12px; }
 .assumptions code {
   background: var(--panel-2);
   padding: 2px 6px;

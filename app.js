@@ -11,6 +11,8 @@ const pct = (n) => (n * 100).toLocaleString('nb-NO', { maximumFractionDigits: 1 
 // --- Bind every .control element to a state key -----------------------------
 const controls = [...document.querySelectorAll('.control')];
 
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
 controls.forEach((ctrl) => {
   const key = ctrl.dataset.key;
   const isPct = ctrl.hasAttribute('data-pct');
@@ -32,19 +34,33 @@ controls.forEach((ctrl) => {
   range.value = initial;
   num.value = initial;
 
-  const onInput = (source) => {
-    let display = parseFloat(source.value);
-    if (Number.isNaN(display)) return;
-    display = Math.min(max, Math.max(min, display));
-    state[key] = fromDisplay(display);
-    // keep both inputs in sync
-    range.value = display;
+  // Range: always within bounds — immediately sync num and re-render.
+  range.addEventListener('input', () => {
+    const display = parseFloat(range.value);
     num.value = display;
+    state[key] = fromDisplay(display);
     render();
-  };
+  });
 
-  range.addEventListener('input', () => onInput(range));
-  num.addEventListener('input', () => onInput(num));
+  // Number (live): only update state + range when the value is already valid.
+  // This lets the user type freely without the field being overwritten mid-entry.
+  num.addEventListener('input', () => {
+    const display = parseFloat(num.value);
+    if (Number.isNaN(display) || display < min || display > max) return;
+    state[key] = fromDisplay(display);
+    range.value = display;
+    render();
+  });
+
+  // Number (blur): clamp + snap the field to the nearest valid value.
+  num.addEventListener('blur', () => {
+    const display = parseFloat(num.value);
+    const clamped = Number.isNaN(display) ? toDisplay(state[key]) : clamp(display, min, max);
+    num.value = clamped;
+    state[key] = fromDisplay(clamped);
+    range.value = clamped;
+    render();
+  });
 });
 
 // --- Shared chart styling ---------------------------------------------------
@@ -80,6 +96,7 @@ const waterfallChart = new Chart(document.getElementById('waterfallChart'), {
   options: {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -166,31 +183,80 @@ const balanceChart = new Chart(document.getElementById('balanceChart'), {
   plugins: [transitionLinePlugin],
 });
 
+// --- Animated total price ---------------------------------------------------
+let _animFrom = null;
+let _animRaf = null;
+const ANIM_MS = 900;
+
+function animateTotal(to) {
+  if (_animRaf) cancelAnimationFrame(_animRaf);
+  const el = document.getElementById('total');
+  const from = _animFrom ?? to;
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / ANIM_MS, 1);
+    const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    el.textContent = kr(from + (to - from) * eased);
+    if (t < 1) { _animRaf = requestAnimationFrame(step); }
+    else { _animFrom = to; _animRaf = null; }
+  }
+  _animRaf = requestAnimationFrame(step);
+}
+
+// --- Insight sentences ------------------------------------------------------
+function renderInsight(r) {
+  const extra = r.totalPrice - r.carPrice;
+  const netLoanCost = r.loanInterest + r.totalFees - r.interestTaxDeduction;
+  const parts = [];
+
+  if (extra > 0.5) {
+    parts.push(`Du betaler ${kr(extra)} mer enn listepris.`);
+  } else if (extra < -0.5) {
+    parts.push(`Du betaler ${kr(-extra)} <em>mindre</em> enn listepris.`);
+  }
+
+  if (netLoanCost > 0.5) {
+    parts.push(`Nettokostnad for lånet er ${kr(netLoanCost)} (renter og gebyrer etter skattefradrag).`);
+  }
+
+  document.getElementById('insight').innerHTML = parts.join(' ');
+}
+
 // --- Render -----------------------------------------------------------------
 function render() {
   const r = beregnTotalpris(state);
 
-  document.getElementById('total').textContent = kr(r.totalPrice);
+  animateTotal(r.totalPrice);
+  renderInsight(r);
 
   document.getElementById('r-carPrice').textContent = kr(r.carPrice);
   document.getElementById('r-loanInterest').textContent = '+ ' + kr(r.loanInterest);
   document.getElementById('r-fees').textContent = '+ ' + kr(r.totalFees);
   document.getElementById('r-taxDeduction').textContent = '− ' + kr(r.interestTaxDeduction);
   document.getElementById('r-bankGain').textContent = '− ' + kr(r.netBankGain);
-  document.getElementById('r-total').textContent = kr(r.totalPrice);
 
-  document.getElementById('f-monthly').textContent = kr(r.monthlyPayment);
-  document.getElementById('f-equityEnd').textContent = kr(r.equityAtPeriodEnd);
-  document.getElementById('f-remaining').textContent = kr(r.remainingLoan);
-  document.getElementById('f-totalPaid').textContent = kr(r.totalPaidOnLoan);
+  // Terminbeløp: show phase 1 always; phase 2 only when there is a distinct
+  // interest-bearing period with remaining loan after the lump-sum injection.
+  const hasPhase1 = r.inputs.interestFreeMonths > 0;
+  const hasPhase2 = r.inputs.amortisationMonths > 0 && r.remainingLoan > 0.5;
 
-  // Returned-equity figure only shown when the equity over-covers the loan.
-  const excessFig = document.getElementById('fig-excess');
-  if (r.excessEquity > 0.5) {
-    excessFig.hidden = false;
-    document.getElementById('f-excess').textContent = kr(r.excessEquity);
+  const fig1 = document.getElementById('fig-monthly1');
+  const fig2 = document.getElementById('fig-monthly2');
+
+  if (hasPhase1 && hasPhase2) {
+    document.getElementById('k-monthly1').textContent = 'Terminbeløp nå';
+    document.getElementById('f-monthly1').textContent = kr(r.monthlyPayment);
+    document.getElementById('k-monthly2').textContent =
+      `Terminbeløp fra år ${r.inputs.interestFreeYears + 1}`;
+    document.getElementById('f-monthly2').textContent = kr(r.postInjectionPayment);
+    fig1.hidden = false;
+    fig2.hidden = false;
   } else {
-    excessFig.hidden = true;
+    const payment = hasPhase2 ? r.postInjectionPayment : r.monthlyPayment;
+    document.getElementById('k-monthly1').textContent = 'Terminbeløp';
+    document.getElementById('f-monthly1').textContent = kr(payment);
+    fig1.hidden = false;
+    fig2.hidden = true;
   }
 
   updateWaterfall(r);
