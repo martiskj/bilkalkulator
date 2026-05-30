@@ -1,0 +1,217 @@
+:root {
+  --bg: #0f1419;
+  --panel: #1a2230;
+  --panel-2: #222d3d;
+  --accent: #4ade80;
+  --accent-dim: #2c7a52;
+  --text: #e6edf3;
+  --text-dim: #8b98a9;
+  --border: #2d3a4d;
+  --pos: #4ade80;
+  --neg: #f87171;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+header h1 {
+  margin: 0 0 4px;
+  font-size: 28px;
+}
+
+header p {
+  margin: 0 0 28px;
+  color: var(--text-dim);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 0.85fr 1.1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .layout { grid-template-columns: 1fr 1fr; }
+  #chart-panel { grid-column: 1 / -1; }
+}
+
+@media (max-width: 720px) {
+  .layout { grid-template-columns: 1fr; }
+  #chart-panel { grid-column: auto; }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+}
+
+.panel h2 {
+  margin: 0 0 18px;
+  font-size: 18px;
+}
+
+/* ---- Input controls ---- */
+.control { margin-bottom: 20px; }
+
+.control-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.control-head label { font-weight: 600; }
+
+.control-head .value-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-head input[type="number"] {
+  width: 110px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 15px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.control-head .unit { color: var(--text-dim); font-size: 14px; min-width: 18px; }
+
+/* Hide native number-input spinner arrows (Firefox + WebKit/Blink). */
+.control-head input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.control-head input[type="number"]::-webkit-outer-spin-button,
+.control-head input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.advanced summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* ---- Result ---- */
+.headline {
+  text-align: center;
+  padding: 8px 0 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+
+.headline .label { color: var(--text-dim); font-size: 14px; }
+
+.headline .total {
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown td { padding: 9px 4px; }
+.breakdown td:last-child { text-align: right; font-weight: 600; }
+.breakdown tr.op td:first-child { color: var(--text-dim); }
+.breakdown tr.sum {
+  border-top: 2px solid var(--border);
+  font-size: 17px;
+}
+.breakdown tr.sum td { padding-top: 14px; }
+
+.pos { color: var(--pos); }
+.neg { color: var(--neg); }
+
+.subfigures {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.figure {
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.figure .k { color: var(--text-dim); font-size: 13px; }
+.figure .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- Chart ---- */
+.chart-box {
+  position: relative;
+  max-width: 280px;
+  margin: 0 auto;
+}
+.chart-savings {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-savings .k { color: var(--text-dim); font-size: 14px; }
+.chart-savings .v { font-weight: 600; }
+
+.assumptions {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.assumptions code {
+  background: var(--panel-2);
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: var(--text);
+}
+.formula {
+  display: block;
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent-dim);
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin: 10px 0 16px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+}

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billånskalkulator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Billånskalkulator</h1>
+      <p>Hva koster bilen egentlig når egenkapitalen står i banken gjennom den rentefrie perioden?</p>
+    </header>
+
+    <div class="layout">
+      <!-- ================= INPUT ================= -->
+      <section class="panel" id="inputs">
+        <h2>Parametre</h2>
+
+        <div class="control" data-key="carPrice" data-min="100000" data-max="1500000" data-step="10000" data-unit="kr">
+          <div class="control-head">
+            <label>Pris på bil</label>
+            <div class="value-box"><input type="number"><span class="unit">kr</span></div>
+          </div>
+          <input type="range">
+        </div>
+
+        <div class="control" data-key="equity" data-min="0" data-max="1000000" data-step="10000" data-unit="kr">
+          <div class="control-head">
+            <label>Egenkapital</label>
+            <div class="value-box"><input type="number"><span class="unit">kr</span></div>
+          </div>
+          <input type="range">
+        </div>
+
+        <div class="control" data-key="repaymentYears" data-min="1" data-max="15" data-step="1" data-unit="år">
+          <div class="control-head">
+            <label>Nedbetalingstid</label>
+            <div class="value-box"><input type="number"><span class="unit">år</span></div>
+          </div>
+          <input type="range">
+        </div>
+
+        <div class="control" data-key="interestFreeYears" data-min="0" data-max="15" data-step="1" data-unit="år">
+          <div class="control-head">
+            <label>Rentefrie år</label>
+            <div class="value-box"><input type="number"><span class="unit">år</span></div>
+          </div>
+          <input type="range">
+        </div>
+
+        <div class="control" data-key="loanRate" data-min="0" data-max="15" data-step="0.1" data-unit="%" data-pct>
+          <div class="control-head">
+            <label>Rente på billån</label>
+            <div class="value-box"><input type="number"><span class="unit">%</span></div>
+          </div>
+          <input type="range">
+        </div>
+
+        <details class="advanced">
+          <summary>Avansert</summary>
+
+          <div class="control" data-key="bankRate" data-min="0" data-max="10" data-step="0.1" data-unit="%" data-pct>
+            <div class="control-head">
+              <label>Bankrente (risikofri)</label>
+              <div class="value-box"><input type="number"><span class="unit">%</span></div>
+            </div>
+            <input type="range">
+          </div>
+
+          <div class="control" data-key="taxRate" data-min="0" data-max="50" data-step="1" data-unit="%" data-pct>
+            <div class="control-head">
+              <label>Skattesats (renter)</label>
+              <div class="value-box"><input type="number"><span class="unit">%</span></div>
+            </div>
+            <input type="range">
+          </div>
+        </details>
+      </section>
+
+      <!-- ================= RESULT ================= -->
+      <section class="panel" id="result">
+        <h2>Resultat</h2>
+
+        <div class="headline">
+          <div class="label">Totalpris for bilen</div>
+          <div class="total" id="total">–</div>
+        </div>
+
+        <table class="breakdown">
+          <tbody>
+            <tr><td>Bilpris</td><td id="r-carPrice">–</td></tr>
+            <tr class="op"><td>+ Lånerenter</td><td id="r-loanInterest" class="neg">–</td></tr>
+            <tr class="op"><td>− Skattefradrag (renter)</td><td id="r-taxDeduction" class="pos">–</td></tr>
+            <tr class="op"><td>− Nettogevinst i bank</td><td id="r-bankGain" class="pos">–</td></tr>
+            <tr class="op" id="row-excess" hidden><td>− Overskytende egenkapital</td><td id="r-excess" class="pos">–</td></tr>
+            <tr class="sum"><td>= Totalpris</td><td id="r-total">–</td></tr>
+          </tbody>
+        </table>
+
+        <div class="subfigures">
+          <div class="figure"><div class="k">Månedlig terminbeløp</div><div class="v" id="f-monthly">–</div></div>
+          <div class="figure"><div class="k">Egenkapital ved periodeslutt</div><div class="v" id="f-equityEnd">–</div></div>
+          <div class="figure"><div class="k">Restlån etter innskudd</div><div class="v" id="f-remaining">–</div></div>
+          <div class="figure"><div class="k">Totalt betalt på lånet</div><div class="v" id="f-totalPaid">–</div></div>
+        </div>
+
+        <div class="assumptions">
+          <p style="font-weight:600;color:var(--text);margin-bottom:6px;">Formel</p>
+          <span class="formula">Totalpris = Bilpris + Lånerenter − Skattefradrag − Nettogevinst_bank</span>
+          <p>Forutsetninger: egenkapitalen står i banken gjennom hele den rentefrie perioden og
+          vokser med netto bankrente (bankrente etter <code>22 %</code> skatt), rentesrente månedlig.
+          Ved slutten av rentefri periode settes hele beløpet inn som engangsinnskudd på lånet.
+          Resten nedbetales som annuitetslån over de gjenstående årene. Skattefradraget på lånerenter
+          (<code>22 %</code>) trekkes direkte fra totalprisen – i kroner identisk med å bruke det til
+          ekstra nedbetaling.</p>
+        </div>
+      </section>
+
+      <!-- ================= CHART ================= -->
+      <section class="panel" id="chart-panel">
+        <h2>Kostnadsfordeling</h2>
+        <div class="chart-box">
+          <canvas id="costChart" width="260" height="260"></canvas>
+        </div>
+        <div class="chart-savings">
+          <span class="k">− Besparelser (skattefradrag + bankgevinst):</span>
+          <span class="v pos" id="c-savings">–</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="calculator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
