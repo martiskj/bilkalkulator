@@ -118,16 +118,30 @@
         </div>
       </section>
 
-      <!-- ================= CHART ================= -->
-      <section class="panel" id="chart-panel">
-        <h2>Kostnadsfordeling</h2>
-        <div class="chart-box">
-          <canvas id="costChart" width="260" height="260"></canvas>
-        </div>
+    </div>
+
+    <!-- ================= CHARTS ================= -->
+    <div class="charts">
+      <section class="panel chart-panel">
+        <h2>Hva bygger opp totalprisen?</h2>
+        <p class="chart-sub">Hver søyle bygger på forrige – rødt drar prisen opp, grønt trekker den ned.</p>
+        <div class="chart-box wide"><canvas id="waterfallChart"></canvas></div>
+      </section>
+
+      <section class="panel chart-panel">
+        <h2>Lønner strategien seg?</h2>
+        <p class="chart-sub">Egenkapitalen i banken gjennom rentefri periode vs. å betale den rett inn på bilen.</p>
+        <div class="chart-box wide"><canvas id="compareChart"></canvas></div>
         <div class="chart-savings">
-          <span class="k">− Besparelser (skattefradrag + bankgevinst):</span>
-          <span class="v pos" id="c-savings">–</span>
+          <span class="k">Du sparer med strategien:</span>
+          <span class="v pos" id="c-strategyGain">–</span>
         </div>
+      </section>
+
+      <section class="panel chart-panel full">
+        <h2>Saldo over tid</h2>
+        <p class="chart-sub">Egenkapitalen vokser i banken, settes inn som engangsbeløp, og lånet nedbetales.</p>
+        <div class="chart-box tall"><canvas id="balanceChart"></canvas></div>
       </section>
     </div>
   </div>

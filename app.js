@@ -47,59 +47,146 @@ controls.forEach((ctrl) => {
   num.addEventListener('input', () => onInput(num));
 });
 
-// --- Cost-distribution doughnut chart ---------------------------------------
-// Shows GROSS outlay (what leaves your account): car price + loan interest.
-// The centre label shows the NET total price; savings are listed below the chart.
-const COLORS = {
-  carPrice: '#3b82f6',   // blue — the car itself
-  loanInterest: '#f87171', // red — a cost
+// --- Shared chart styling ---------------------------------------------------
+const COLOR = {
+  car: '#3b82f6',      // blue — the car price itself
+  cost: '#f87171',     // red — drives the price up
+  saving: '#34d399',   // teal-green — pulls the price down
+  total: '#4ade80',    // accent green — the headline total
+  alt: '#64748b',      // grey — the alternative strategy
+  bank: '#fbbf24',     // amber — bank balance
+  loan: '#f87171',     // red — loan balance
+  grid: '#2d3a4d',
+  tick: '#8b98a9',
 };
+const GRID = { color: COLOR.grid };
+const TICKS = { color: COLOR.tick };
+const moneyTick = (v) => (v / 1000).toLocaleString('nb-NO') + 'k';
 
-// Plugin: render the net total price in the centre of the doughnut.
-const centerTextPlugin = {
-  id: 'centerText',
-  beforeDraw(chart) {
-    const { ctx, chartArea } = chart;
-    if (!chartArea) return;
-    const cx = (chartArea.left + chartArea.right) / 2;
-    const cy = (chartArea.top + chartArea.bottom) / 2;
-    const total = chart.options.plugins.centerText.total ?? 0;
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#8b98a9';
-    ctx.font = '13px -apple-system, Segoe UI, sans-serif';
-    ctx.fillText('Totalpris', cx, cy - 14);
-    ctx.fillStyle = '#4ade80';
-    ctx.font = '700 22px -apple-system, Segoe UI, sans-serif';
-    ctx.fillText(kr(total), cx, cy + 8);
-    ctx.restore();
-  },
-};
-
-const chart = new Chart(document.getElementById('costChart'), {
-  type: 'doughnut',
+// ===========================================================================
+//  1. WATERFALL — how the headline formula builds up the total price.
+//  Implemented as a stacked bar: a transparent "base" dataset offsets each bar
+//  to where the running total sits, and a coloured "value" dataset draws the
+//  step itself. Greens pull the price down, red pushes it up.
+// ===========================================================================
+const waterfallChart = new Chart(document.getElementById('waterfallChart'), {
+  type: 'bar',
   data: {
-    labels: ['Bilpris', 'Lånerenter'],
+    labels: [],
+    datasets: [
+      { label: 'base', data: [], backgroundColor: 'transparent', stack: 'wf' },
+      { label: 'verdi', data: [], backgroundColor: [], stack: 'wf', borderRadius: 4 },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        filter: (c) => c.datasetIndex === 1,
+        callbacks: {
+          label: (c) => {
+            const sign = c.dataset.signs[c.dataIndex];
+            return (sign < 0 ? '− ' : sign > 0 ? '+ ' : '') + kr(c.dataset.amounts[c.dataIndex]);
+          },
+        },
+      },
+    },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: TICKS },
+      y: { stacked: true, grid: GRID, ticks: { ...TICKS, callback: moneyTick }, beginAtZero: true },
+    },
+  },
+});
+
+// ===========================================================================
+//  2. COMPARISON — modelled strategy vs. paying equity straight down.
+// ===========================================================================
+const compareChart = new Chart(document.getElementById('compareChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Med strategi', 'Betal med en gang'],
     datasets: [{
       data: [0, 0],
-      backgroundColor: [COLORS.carPrice, COLORS.loanInterest],
-      borderColor: '#1a2230',
-      borderWidth: 2,
+      backgroundColor: [COLOR.total, COLOR.alt],
+      borderRadius: 6,
     }],
   },
   options: {
     responsive: true,
-    cutout: '62%',
+    maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'bottom', labels: { color: '#e6edf3', padding: 16 } },
-      centerText: { total: 0 },
-      tooltip: {
-        callbacks: { label: (c) => `${c.label}: ${kr(c.parsed)}` },
-      },
+      legend: { display: false },
+      tooltip: { callbacks: { label: (c) => kr(c.parsed.y) } },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: TICKS },
+      y: { grid: GRID, ticks: { ...TICKS, callback: moneyTick }, beginAtZero: false },
     },
   },
-  plugins: [centerTextPlugin],
+});
+
+// ===========================================================================
+//  3. BALANCE OVER TIME — bank balance and loan balance, month by month.
+//  A dashed vertical line marks the end of the interest-free period.
+// ===========================================================================
+const transitionLinePlugin = {
+  id: 'transitionLine',
+  afterDraw(chart) {
+    const month = chart.options.plugins.transitionLine?.month;
+    if (!month) return;
+    const x = chart.scales.x.getPixelForValue(month);
+    const { top, bottom } = chart.chartArea;
+    const { ctx } = chart;
+    ctx.save();
+    ctx.beginPath();
+    ctx.setLineDash([5, 4]);
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.strokeStyle = '#8b98a9';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#8b98a9';
+    ctx.font = '11px -apple-system, Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Innskudd', x, top + 12);
+    ctx.restore();
+  },
+};
+
+const balanceChart = new Chart(document.getElementById('balanceChart'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Banksaldo', data: [], borderColor: COLOR.bank, backgroundColor: 'transparent', tension: 0.15, pointRadius: 0, borderWidth: 2 },
+      { label: 'Lånesaldo', data: [], borderColor: COLOR.loan, backgroundColor: 'transparent', tension: 0.15, pointRadius: 0, borderWidth: 2 },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#e6edf3', padding: 16 } },
+      transitionLine: { month: 0 },
+      tooltip: {
+        callbacks: {
+          title: (items) => `Måned ${items[0].label}`,
+          label: (c) => `${c.dataset.label}: ${kr(c.parsed.y)}`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { ...TICKS, callback: (v, i, ticks) => (ticks[i].value % 12 === 0 ? ticks[i].value / 12 + ' år' : '') },
+      },
+      y: { grid: GRID, ticks: { ...TICKS, callback: moneyTick }, beginAtZero: true },
+    },
+  },
+  plugins: [transitionLinePlugin],
 });
 
 // --- Render -----------------------------------------------------------------
@@ -128,12 +215,80 @@ function render() {
   document.getElementById('f-remaining').textContent = kr(r.remainingLoan);
   document.getElementById('f-totalPaid').textContent = kr(r.totalPaidDuringAmortisation);
 
-  // Update the cost-distribution chart.
-  const savings = r.interestTaxDeduction + r.netBankGain + r.excessEquity;
-  chart.data.datasets[0].data = [r.carPrice, r.loanInterest];
-  chart.options.plugins.centerText.total = r.totalPrice;
-  chart.update();
-  document.getElementById('c-savings').textContent = '− ' + kr(savings);
+  updateWaterfall(r);
+  updateComparison(r);
+  updateBalance();
+}
+
+// --- 1. Waterfall: build steps, offsetting each bar by the running total ----
+function updateWaterfall(r) {
+  // step = { label, amount, sign } where sign -1 pulls the price down, +1 up.
+  const steps = [
+    { label: 'Bilpris', amount: r.carPrice, sign: 0, color: COLOR.car },
+    { label: 'Lånerenter', amount: r.loanInterest, sign: 1, color: COLOR.cost },
+    { label: 'Skattefradrag', amount: r.interestTaxDeduction, sign: -1, color: COLOR.saving },
+    { label: 'Bankgevinst', amount: r.netBankGain, sign: -1, color: COLOR.saving },
+  ];
+  if (r.excessEquity > 0.5) {
+    steps.push({ label: 'Overskytende EK', amount: r.excessEquity, sign: -1, color: COLOR.saving });
+  }
+
+  const labels = [];
+  const base = [];
+  const value = [];
+  const colors = [];
+  const amounts = [];
+  const signs = [];
+
+  let running = 0;
+  for (const s of steps) {
+    const delta = s.sign < 0 ? -s.amount : s.amount; // sign 0 treated as +
+    // For a downward step the visible bar sits below the running total.
+    base.push(delta < 0 ? running + delta : running);
+    value.push(s.amount);
+    labels.push(s.label);
+    colors.push(s.color);
+    amounts.push(s.amount);
+    signs.push(s.sign);
+    running += delta;
+  }
+  // Final resting bar: the total, anchored at zero.
+  labels.push('Totalpris');
+  base.push(0);
+  value.push(running);
+  colors.push(COLOR.total);
+  amounts.push(running);
+  signs.push(0);
+
+  waterfallChart.data.labels = labels;
+  waterfallChart.data.datasets[0].data = base;
+  const v = waterfallChart.data.datasets[1];
+  v.data = value;
+  v.backgroundColor = colors;
+  v.amounts = amounts;
+  v.signs = signs;
+  waterfallChart.update();
+}
+
+// --- 2. Comparison: modelled strategy vs. pay-down-immediately --------------
+function updateComparison(r) {
+  const alt = beregnAlternativ(state);
+  compareChart.data.datasets[0].data = [r.totalPrice, alt.totalPrice];
+  compareChart.update();
+
+  const gain = alt.totalPrice - r.totalPrice;
+  document.getElementById('c-strategyGain').textContent =
+    (gain >= 0 ? '' : '− ') + kr(Math.abs(gain));
+}
+
+// --- 3. Balance over time ---------------------------------------------------
+function updateBalance() {
+  const ts = beregnTidsserie(state);
+  balanceChart.data.labels = ts.months;
+  balanceChart.data.datasets[0].data = ts.bankBalance;
+  balanceChart.data.datasets[1].data = ts.loanBalance;
+  balanceChart.options.plugins.transitionLine.month = ts.interestFreeMonths;
+  balanceChart.update();
 }
 
 render();

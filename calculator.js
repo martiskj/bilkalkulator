@@ -119,11 +119,115 @@ function beregnTotalpris(params = {}) {
   };
 }
 
+/**
+ * Alternative strategy: pay the equity straight into the car at purchase,
+ * so the loan starts at (carPrice - equity). No money is parked in the bank,
+ * hence no bank gain. Same interest-free period and annuity afterwards.
+ *
+ * Used by the comparison chart to quantify how much the "park in bank" strategy
+ * is worth versus the naive "pay it down immediately" approach.
+ *
+ * @returns {object} the same shape as beregnTotalpris (minus bank-specific fields).
+ */
+function beregnAlternativ(params = {}) {
+  const p = { ...DEFAULTS, ...params };
+
+  const interestFreeYears = Math.max(0, Math.min(p.interestFreeYears, p.repaymentYears));
+  const amortisationMonths = Math.round((p.repaymentYears - interestFreeYears) * 12);
+
+  // Equity is spent at purchase; loan starts at the difference.
+  const remainingLoan = Math.max(0, p.carPrice - p.equity);
+  const excessEquity = Math.max(0, p.equity - p.carPrice); // returned to you
+
+  const monthlyRate = p.loanRate / 12;
+  const monthlyPayment = annuityPayment(remainingLoan, monthlyRate, amortisationMonths);
+  const totalPaidDuringAmortisation = monthlyPayment * amortisationMonths;
+  const loanInterest = Math.max(0, totalPaidDuringAmortisation - remainingLoan);
+  const interestTaxDeduction = p.taxRate * loanInterest;
+
+  const totalPrice =
+      p.carPrice
+    + loanInterest
+    - interestTaxDeduction
+    - excessEquity;
+
+  return {
+    carPrice: p.carPrice,
+    loanInterest,
+    interestTaxDeduction,
+    netBankGain: 0,
+    excessEquity,
+    totalPrice,
+    remainingLoan,
+    monthlyPayment,
+    totalPaidDuringAmortisation,
+  };
+}
+
+/**
+ * Month-by-month balances for the modelled (park-in-bank) strategy.
+ *
+ * Phase 1 (interest-free): the loan sits unchanged at carPrice (no payments,
+ * no interest) while the equity grows in the bank at the net rate.
+ * Transition: at the end of the interest-free period the whole bank balance is
+ * injected as a lump sum, reducing the loan; any surplus is returned.
+ * Phase 2 (amortisation): the remaining loan is repaid as an annuity; the bank
+ * balance stays at 0 (surplus already returned).
+ *
+ * @returns {object} { months:number[], bankBalance:number[], loanBalance:number[],
+ *                     interestFreeMonths:number }
+ */
+function beregnTidsserie(params = {}) {
+  const p = { ...DEFAULTS, ...params };
+
+  const interestFreeYears = Math.max(0, Math.min(p.interestFreeYears, p.repaymentYears));
+  const interestFreeMonths = Math.round(interestFreeYears * 12);
+  const totalMonths = Math.round(p.repaymentYears * 12);
+  const amortisationMonths = totalMonths - interestFreeMonths;
+
+  const netBankRate = p.bankRate * (1 - p.taxRate);
+  const monthlyBankRate = netBankRate / 12;
+  const monthlyLoanRate = p.loanRate / 12;
+
+  const months = [];
+  const bankBalance = [];
+  const loanBalance = [];
+
+  // --- Phase 1: equity grows in the bank, loan parked at full car price ---
+  let bank = p.equity;
+  let loan = p.carPrice;
+  for (let m = 0; m <= interestFreeMonths; m++) {
+    months.push(m);
+    bankBalance.push(bank);
+    loanBalance.push(loan);
+    bank *= 1 + monthlyBankRate;
+  }
+
+  // --- Transition: lump-sum injection at end of interest-free period ---
+  const equityAtPeriodEnd = bankBalance[interestFreeMonths];
+  loan = Math.max(0, p.carPrice - equityAtPeriodEnd);
+  bank = 0; // any surplus is returned to you
+
+  // --- Phase 2: annuity amortisation of the remaining loan ---
+  const payment = annuityPayment(loan, monthlyLoanRate, amortisationMonths);
+  for (let m = 1; m <= amortisationMonths; m++) {
+    loan = loan * (1 + monthlyLoanRate) - payment;
+    loan = Math.max(0, loan);
+    months.push(interestFreeMonths + m);
+    bankBalance.push(0);
+    loanBalance.push(loan);
+  }
+
+  return { months, bankBalance, loanBalance, interestFreeMonths };
+}
+
 // Expose for both browser (global) and Node (tests).
 if (typeof window !== 'undefined') {
   window.beregnTotalpris = beregnTotalpris;
+  window.beregnAlternativ = beregnAlternativ;
+  window.beregnTidsserie = beregnTidsserie;
   window.CALC_DEFAULTS = DEFAULTS;
 }
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { beregnTotalpris, DEFAULTS };
+  module.exports = { beregnTotalpris, beregnAlternativ, beregnTidsserie, DEFAULTS };
 }

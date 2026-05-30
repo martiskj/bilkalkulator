@@ -47,12 +47,30 @@ header p {
 
 @media (max-width: 1024px) {
   .layout { grid-template-columns: 1fr 1fr; }
-  #chart-panel { grid-column: 1 / -1; }
 }
 
 @media (max-width: 720px) {
   .layout { grid-template-columns: 1fr; }
-  #chart-panel { grid-column: auto; }
+}
+
+/* ---- Charts area (full width, below inputs/result) ---- */
+.charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+  align-items: start;
+}
+.charts .full { grid-column: 1 / -1; }
+
+@media (max-width: 720px) {
+  .charts { grid-template-columns: 1fr; }
+}
+
+.chart-sub {
+  margin: -8px 0 16px;
+  color: var(--text-dim);
+  font-size: 13px;
 }
 
 .panel {
@@ -176,9 +194,10 @@ input[type="range"] {
 /* ---- Chart ---- */
 .chart-box {
   position: relative;
-  max-width: 280px;
   margin: 0 auto;
 }
+.chart-box.wide { height: 300px; }
+.chart-box.tall { height: 360px; }
 .chart-savings {
   display: flex;
   justify-content: space-between;
