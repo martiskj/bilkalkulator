@@ -3,11 +3,20 @@
  *
  * STRATEGY MODELLED
  * -----------------
- * While the loan is interest-free, the equity is NOT used to pay down the car.
- * Instead it sits in a risk-free bank account earning interest. When the
- * interest-free period ends, the whole equity balance (incl. accrued interest)
- * is injected as a lump sum to reduce the loan. The remaining balance is then
- * repaid as an annuity loan over the remaining years.
+ * The loan is interest-free for the first years, but NOT instalment-free: you
+ * still pay a monthly instalment, so during the interest-free period the whole
+ * instalment goes to principal (no interest accrues). At 0% that instalment is
+ * the loan amortised linearly over the full term (= car price / total months) —
+ * this matches how real campaign-rate car loans behave. When the product rate
+ * kicks in, the remaining balance is re-amortised as an annuity over the rest
+ * of the term.
+ *
+ * Meanwhile the equity is NOT used as a down payment. It sits in a risk-free
+ * bank account earning interest, and when the interest-free period ends the
+ * whole balance (incl. accrued interest) is injected as a lump sum against the
+ * loan. Any remaining balance is then repaid as an annuity over the rest of the
+ * term. If the equity over-covers the (already amortised) loan, the surplus is
+ * simply returned to you.
  *
  * THE HEADLINE FORMULA (kept deliberately simple and visible):
  *
@@ -16,10 +25,14 @@
  *                - interestTaxDeduction   (22% of loanInterest, Norwegian rule)
  *                - netBankGain            (after-tax growth of the equity)
  *
- * Why equity is not its own cost term: the equity is part of the car price you
- * pay anyway, so it nets out. What changes the real cost of owning the car is
- * only (a) the interest you pay, (b) the tax you get back on that interest, and
- * (c) the gain the equity earned while parked in the bank.
+ * Why equity is not its own cost term: the equity (and any surplus returned to
+ * you) is part of the car price you pay anyway, so it nets out. The surplus is
+ * therefore NOT a separate formula term — subtracting both it and netBankGain
+ * would double-count the bank gain, since the gain is already inside the
+ * returned surplus. What changes the real cost of owning the car is only (a) the
+ * interest you pay, (b) the tax you get back on it, and (c) the gain the equity
+ * earned while parked in the bank. (Note: surplus > 0 only when the loan is
+ * fully covered, in which case loanInterest is 0 — the terms never overlap.)
  *
  * ASSUMPTIONS
  * -----------
@@ -29,6 +42,10 @@
  *   In kroner this is identical to using the refund for extra repayment; the
  *   only difference is a negligible timing / second-order effect.
  * - All rates are nominal annual rates, compounded monthly.
+ * - Fees: a one-time establishment fee is financed into the loan (so it is
+ *   amortised and bears interest), and a flat term fee is charged on every
+ *   monthly instalment while the loan is active. Fees are NOT tax-deductible —
+ *   only interest gets the 22% deduction.
  */
 
 const DEFAULTS = {
@@ -39,6 +56,8 @@ const DEFAULTS = {
   equity: 200000,          // kr — own capital available up front
   bankRate: 0.04,          // risk-free annual bank rate for parked equity
   taxRate: 0.22,           // Norwegian tax on bank interest AND interest deduction
+  establishmentFee: 1959,  // kr — one-time set-up fee, financed into the loan
+  termFee: 95,             // kr — fee charged on every monthly instalment
 };
 
 /**
@@ -71,35 +90,58 @@ function beregnTotalpris(params = {}) {
   // Clamp inputs to sane ranges.
   const interestFreeYears = Math.max(0, Math.min(p.interestFreeYears, p.repaymentYears));
   const interestFreeMonths = Math.round(interestFreeYears * 12);
-  const amortisationMonths = Math.round((p.repaymentYears - interestFreeYears) * 12);
+  const totalMonths = Math.round(p.repaymentYears * 12);
+  const amortisationMonths = totalMonths - interestFreeMonths;
+  const monthlyRate = p.loanRate / 12;
 
-  // --- Phase 1: equity grows in the bank during the interest-free period ---
-  // Bank interest is taxed at 22%, modelled as an after-tax effective rate.
+  // The establishment fee is financed into the loan (so it is amortised and
+  // bears interest just like the real product).
+  const financedAmount = p.carPrice + p.establishmentFee;
+
+  // --- Phase 1: interest-free instalments pay down principal; equity grows ---
+  // At 0% the instalment is the loan amortised linearly over the FULL term
+  // (an annuity at 0% = principal / total months), matching how real
+  // campaign-rate car loans behave. The whole instalment is principal.
+  const principalInstalment = totalMonths > 0 ? financedAmount / totalMonths : 0;
+  const principalPaidInterestFree = Math.min(financedAmount, principalInstalment * interestFreeMonths);
+  const balanceBeforeInjection = financedAmount - principalPaidInterestFree;
+
   const netBankRate = p.bankRate * (1 - p.taxRate);
   const equityAtPeriodEnd = compound(p.equity, netBankRate, interestFreeMonths);
   const netBankGain = equityAtPeriodEnd - p.equity;
 
-  // --- Phase 2: lump-sum injection reduces the loan ---
-  // Equity (and its gain) is used to pay down the loan when interest kicks in.
-  const remainingLoan = Math.max(0, p.carPrice - equityAtPeriodEnd);
-  const excessEquity = Math.max(0, equityAtPeriodEnd - p.carPrice); // returned to you
+  // --- Transition: lump-sum injection of the equity against the loan ---
+  const remainingLoan = Math.max(0, balanceBeforeInjection - equityAtPeriodEnd);
+  const excessEquity = Math.max(0, equityAtPeriodEnd - balanceBeforeInjection); // returned to you
 
-  // --- Phase 3: annuity amortisation of the remaining loan ---
-  const monthlyRate = p.loanRate / 12;
-  const monthlyPayment = annuityPayment(remainingLoan, monthlyRate, amortisationMonths);
-  const totalPaidDuringAmortisation = monthlyPayment * amortisationMonths;
+  // --- Phase 2: annuity amortisation of whatever loan remains (with interest) ---
+  const principalInstalment2 = annuityPayment(remainingLoan, monthlyRate, amortisationMonths);
+  const totalPaidDuringAmortisation = principalInstalment2 * amortisationMonths;
   const loanInterest = Math.max(0, totalPaidDuringAmortisation - remainingLoan);
 
-  // --- Phase 4: Norwegian tax deduction on loan interest (22%) ---
+  // --- Fees: a per-instalment term fee is charged for every month the loan is
+  // active. If the equity clears the loan at injection, phase 2 has no
+  // instalments and thus no further term fees. ---
+  const payingMonths = interestFreeMonths + (remainingLoan > 0.5 ? amortisationMonths : 0);
+  const termFeesTotal = p.termFee * payingMonths;
+  const totalFees = p.establishmentFee + termFeesTotal;
+
+  // Displayed instalments include the term fee (matches a real loan's "kostnad").
+  const monthlyPayment = principalInstalment + p.termFee;
+  const postInjectionPayment = remainingLoan > 0.5 ? principalInstalment2 + p.termFee : 0;
+
+  // --- Norwegian tax deduction on loan interest (22%) — fees are NOT deductible ---
   const interestTaxDeduction = p.taxRate * loanInterest;
 
   // =====================  THE HEADLINE FORMULA  =====================
+  // No excessEquity term: see the file header — it would double-count the
+  // bank gain, and surplus > 0 only when loanInterest is 0 anyway.
   const totalPrice =
       p.carPrice
     + loanInterest
+    + totalFees
     - interestTaxDeduction
-    - netBankGain
-    - excessEquity; // if equity over-covers the car, the surplus is yours
+    - netBankGain;
   // ==================================================================
 
   return {
@@ -107,15 +149,20 @@ function beregnTotalpris(params = {}) {
     // Formula terms
     carPrice: p.carPrice,
     loanInterest,
+    totalFees,
     interestTaxDeduction,
     netBankGain,
-    excessEquity,
     totalPrice,
     // Supplementary figures for the UI
+    establishmentFee: p.establishmentFee,
+    termFeesTotal,
+    excessEquity,                 // cash returned to you (informational, not a formula term)
     equityAtPeriodEnd,
+    balanceBeforeInjection,
     remainingLoan,
-    monthlyPayment,
-    totalPaidDuringAmortisation,
+    monthlyPayment,               // instalment during the interest-free period (incl. term fee)
+    postInjectionPayment,         // instalment after the lump sum (incl. term fee; 0 if loan cleared)
+    totalPaidOnLoan: principalPaidInterestFree + totalPaidDuringAmortisation + termFeesTotal,
   };
 }
 
@@ -147,30 +194,38 @@ function beregnTidsserie(params = {}) {
   const monthlyBankRate = netBankRate / 12;
   const monthlyLoanRate = p.loanRate / 12;
 
+  // The establishment fee is financed into the loan.
+  const financedAmount = p.carPrice + p.establishmentFee;
+
+  // Interest-free instalment: loan amortised linearly over the full term
+  // (annuity at 0% = principal / total months).
+  const payment = totalMonths > 0 ? financedAmount / totalMonths : 0;
+
   const months = [];
   const equityPrincipal = []; // original deposit — constant during phase 1
   const equityInterest = [];  // interest accrued on top of the deposit
   const loanBalance = [];
 
-  // --- Phase 1: equity grows in the bank, loan parked at full car price ---
+  // --- Phase 1: instalments pay down principal (0% interest); equity grows ---
   let bank = p.equity;
-  let loan = p.carPrice;
+  let loan = financedAmount;
   for (let m = 0; m <= interestFreeMonths; m++) {
     months.push(m);
     equityPrincipal.push(p.equity);
     equityInterest.push(bank - p.equity);
     loanBalance.push(loan);
     bank *= 1 + monthlyBankRate;
+    loan = Math.max(0, loan - payment); // interest-free → whole instalment is principal
   }
 
   // --- Transition: lump-sum injection at end of interest-free period ---
   const equityAtPeriodEnd = equityPrincipal[interestFreeMonths] + equityInterest[interestFreeMonths];
-  loan = Math.max(0, p.carPrice - equityAtPeriodEnd);
+  loan = Math.max(0, loanBalance[interestFreeMonths] - equityAtPeriodEnd);
 
   // --- Phase 2: annuity amortisation; equity is spent, so its bars are 0 ---
-  const payment = annuityPayment(loan, monthlyLoanRate, amortisationMonths);
+  const postInjectionPayment = annuityPayment(loan, monthlyLoanRate, amortisationMonths);
   for (let m = 1; m <= amortisationMonths; m++) {
-    loan = loan * (1 + monthlyLoanRate) - payment;
+    loan = loan * (1 + monthlyLoanRate) - postInjectionPayment;
     loan = Math.max(0, loan);
     months.push(interestFreeMonths + m);
     equityPrincipal.push(0);

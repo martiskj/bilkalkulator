@@ -174,23 +174,24 @@ function render() {
 
   document.getElementById('r-carPrice').textContent = kr(r.carPrice);
   document.getElementById('r-loanInterest').textContent = '+ ' + kr(r.loanInterest);
+  document.getElementById('r-fees').textContent = '+ ' + kr(r.totalFees);
   document.getElementById('r-taxDeduction').textContent = '− ' + kr(r.interestTaxDeduction);
   document.getElementById('r-bankGain').textContent = '− ' + kr(r.netBankGain);
   document.getElementById('r-total').textContent = kr(r.totalPrice);
 
-  // Surplus row only shown when equity over-covers the car.
-  const excessRow = document.getElementById('row-excess');
-  if (r.excessEquity > 0.5) {
-    excessRow.hidden = false;
-    document.getElementById('r-excess').textContent = '− ' + kr(r.excessEquity);
-  } else {
-    excessRow.hidden = true;
-  }
-
   document.getElementById('f-monthly').textContent = kr(r.monthlyPayment);
   document.getElementById('f-equityEnd').textContent = kr(r.equityAtPeriodEnd);
   document.getElementById('f-remaining').textContent = kr(r.remainingLoan);
-  document.getElementById('f-totalPaid').textContent = kr(r.totalPaidDuringAmortisation);
+  document.getElementById('f-totalPaid').textContent = kr(r.totalPaidOnLoan);
+
+  // Returned-equity figure only shown when the equity over-covers the loan.
+  const excessFig = document.getElementById('fig-excess');
+  if (r.excessEquity > 0.5) {
+    excessFig.hidden = false;
+    document.getElementById('f-excess').textContent = kr(r.excessEquity);
+  } else {
+    excessFig.hidden = true;
+  }
 
   updateWaterfall(r);
   updateBalance();
@@ -202,12 +203,10 @@ function updateWaterfall(r) {
   const steps = [
     { label: 'Bilpris', amount: r.carPrice, sign: 0, color: COLOR.car },
     { label: 'Lånerenter', amount: r.loanInterest, sign: 1, color: COLOR.cost },
+    { label: 'Gebyrer', amount: r.totalFees, sign: 1, color: COLOR.cost },
     { label: 'Skattefradrag', amount: r.interestTaxDeduction, sign: -1, color: COLOR.saving },
     { label: 'Bankgevinst', amount: r.netBankGain, sign: -1, color: COLOR.saving },
   ];
-  if (r.excessEquity > 0.5) {
-    steps.push({ label: 'Overskytende EK', amount: r.excessEquity, sign: -1, color: COLOR.saving });
-  }
 
   const labels = [];
   const base = [];

@@ -76,6 +76,22 @@
             </div>
             <input type="range">
           </div>
+
+          <div class="control" data-key="establishmentFee" data-min="0" data-max="20000" data-step="100" data-unit="kr">
+            <div class="control-head">
+              <label>Etableringsgebyr</label>
+              <div class="value-box"><input type="number"><span class="unit">kr</span></div>
+            </div>
+            <input type="range">
+          </div>
+
+          <div class="control" data-key="termFee" data-min="0" data-max="500" data-step="5" data-unit="kr">
+            <div class="control-head">
+              <label>Termingebyr (pr. mnd)</label>
+              <div class="value-box"><input type="number"><span class="unit">kr</span></div>
+            </div>
+            <input type="range">
+          </div>
         </details>
       </section>
 
@@ -92,29 +108,35 @@
           <tbody>
             <tr><td>Bilpris</td><td id="r-carPrice">–</td></tr>
             <tr class="op"><td>+ Lånerenter</td><td id="r-loanInterest" class="neg">–</td></tr>
+            <tr class="op"><td>+ Gebyrer</td><td id="r-fees" class="neg">–</td></tr>
             <tr class="op"><td>− Skattefradrag (renter)</td><td id="r-taxDeduction" class="pos">–</td></tr>
             <tr class="op"><td>− Nettogevinst i bank</td><td id="r-bankGain" class="pos">–</td></tr>
-            <tr class="op" id="row-excess" hidden><td>− Overskytende egenkapital</td><td id="r-excess" class="pos">–</td></tr>
             <tr class="sum"><td>= Totalpris</td><td id="r-total">–</td></tr>
           </tbody>
         </table>
 
         <div class="subfigures">
-          <div class="figure"><div class="k">Månedlig terminbeløp</div><div class="v" id="f-monthly">–</div></div>
+          <div class="figure"><div class="k">Terminbeløp (rentefri periode)</div><div class="v" id="f-monthly">–</div></div>
           <div class="figure"><div class="k">Egenkapital ved periodeslutt</div><div class="v" id="f-equityEnd">–</div></div>
           <div class="figure"><div class="k">Restlån etter innskudd</div><div class="v" id="f-remaining">–</div></div>
           <div class="figure"><div class="k">Totalt betalt på lånet</div><div class="v" id="f-totalPaid">–</div></div>
+          <div class="figure" id="fig-excess" hidden><div class="k">Tilbakebetalt egenkapital</div><div class="v pos" id="f-excess">–</div></div>
         </div>
 
         <div class="assumptions">
           <p style="font-weight:600;color:var(--text);margin-bottom:6px;">Formel</p>
-          <span class="formula">Totalpris = Bilpris + Lånerenter − Skattefradrag − Nettogevinst_bank</span>
-          <p>Forutsetninger: egenkapitalen står i banken gjennom hele den rentefrie perioden og
-          vokser med netto bankrente (bankrente etter <code>22 %</code> skatt), rentesrente månedlig.
-          Ved slutten av rentefri periode settes hele beløpet inn som engangsinnskudd på lånet.
-          Resten nedbetales som annuitetslån over de gjenstående årene. Skattefradraget på lånerenter
-          (<code>22 %</code>) trekkes direkte fra totalprisen – i kroner identisk med å bruke det til
-          ekstra nedbetaling.</p>
+          <span class="formula">Totalpris = Bilpris + Lånerenter + Gebyrer − Skattefradrag − Nettogevinst_bank</span>
+          <p>Forutsetninger: lånet er rentefritt i den rentefrie perioden, men <strong>ikke avdragsfritt</strong>
+          – terminbeløpet er da lånet fordelt lineært over hele løpetiden (bilpris ÷ antall måneder), og siden
+          renten er null går hele beløpet til avdrag. Når produktrenten slår inn, re-annuiteres restlånet over de
+          gjenstående månedene. Egenkapitalen står i banken gjennom hele perioden og vokser med
+          netto bankrente (bankrente etter <code>22 %</code> skatt), rentesrente månedlig. Ved slutten av
+          rentefri periode settes hele beløpet inn som engangsinnskudd på restlånet; et eventuelt overskytende
+          beløp betales tilbake til deg. Resten nedbetales som annuitetslån med rente over de gjenstående årene.
+          Skattefradraget på lånerenter (<code>22 %</code>) trekkes direkte fra totalprisen – i kroner identisk
+          med å bruke det til ekstra nedbetaling. Gebyrene består av et etableringsgebyr (finansiert inn i lånet,
+          så det forrentes) og et termingebyr som betales på hver termin så lenge lånet løper. Gebyrer er
+          <strong>ikke</strong> fradragsberettiget – kun renter får <code>22 %</code>-fradraget.</p>
         </div>
       </section>
 
